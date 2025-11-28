@@ -40,7 +40,7 @@ export function useAudioPlayer() {
       // เรียก API ผ่าน Axios (API Key จะถูกเพิ่มโดย Interceptor)
       const response = await googleDriveApi.get('/files', {
         params: {
-          q: `'${folderId}' in parents and (mimeType contains 'audio/' or name contains '.mp3')`,
+          q: `'${folderId}' in parents and (mimeType contains 'audio/' or name contains '.mp3') and mimeType != 'application/vnd.google-apps.folder'`,
           fields: 'files(id, name, mimeType, size)',
           orderBy: 'name'
         }
@@ -53,14 +53,17 @@ export function useAudioPlayer() {
         return
       }
 
-      playlist.value = files.map(file => ({
-        id: file.id,
-        name: file.name,
-        mimeType: file.mimeType,
-        size: file.size,
-        // สร้าง URL สำหรับเล่นเพลง (ใช้ API Key จาก env)
-        url: `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${import.meta.env.VITE_GOOGLE_API_KEY}`
-      }))
+      // Filter out folders explicitly and map to playlist
+      playlist.value = files
+        .filter(file => file.mimeType !== 'application/vnd.google-apps.folder')
+        .map(file => ({
+          id: file.id,
+          name: file.name,
+          mimeType: file.mimeType,
+          size: file.size,
+          // สร้าง URL สำหรับเล่นเพลง (ใช้ API Key จาก env)
+          url: `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${import.meta.env.VITE_GOOGLE_API_KEY?.trim()}`
+        }))
 
       console.log('✅ โหลดเพลงสำเร็จ:', playlist.value.length, 'ไฟล์')
       
