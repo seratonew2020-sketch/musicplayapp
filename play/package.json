@@ -12,10 +12,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.22"
+    "@mdi/font": "^7.4.47",
+    "axios": "^1.13.2",
+    "gapi-client": "^0.0.3",
+    "sass": "^1.94.2",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vue": "^3.5.22",
+    "vuetify": "^3.10.11"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/devtools": "^8.0.5",
+    "@vue/devtools-api": "^8.0.5",
     "vite": "^7.1.11",
     "vite-plugin-vue-devtools": "^8.0.3"
   }
