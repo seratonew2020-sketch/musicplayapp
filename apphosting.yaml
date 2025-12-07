@@ -1,0 +1,54 @@
+# Firebase App Hosting Configuration
+# สำหรับ Music Player App
+
+# Runtime configuration
+runtime: nodejs20
+
+# Build configuration
+build:
+  # Build command
+  commands:
+    - npm ci
+    - npm run build
+  
+  # Output directory
+  output: dist
+
+# Environment variables
+env:
+  # Firebase configuration (จะถูก inject จาก Firebase Console)
+  - variable: VITE_FIREBASE_API_KEY
+    secret: firebase-api-key
+  
+  - variable: VITE_FIREBASE_AUTH_DOMAIN
+    secret: firebase-auth-domain
+  
+  - variable: VITE_FIREBASE_PROJECT_ID
+    value: musicplay-d9231
+  
+  - variable: VITE_FIREBASE_STORAGE_BUCKET
+    value: musicplay-d9231.appspot.com
+  
+  - variable: VITE_FIREBASE_MESSAGING_SENDER_ID
+    secret: firebase-messaging-sender-id
+  
+  - variable: VITE_FIREBASE_APP_ID
+    secret: firebase-app-id
+
+# Resource limits
+resources:
+  cpu: 1
+  memory: 512Mi
+
+# Health check configuration
+healthCheck:
+  path: /
+  interval: 30s
+  timeout: 5s
+  failureThreshold: 3
+
+# Scaling configuration
+scaling:
+  minInstances: 0
+  maxInstances: 10
+

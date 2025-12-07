@@ -81,4 +81,16 @@ const formatTime = (seconds) => {
 .v-card {
   width: 100%;
 }
+
+/* ปรับแต่งปุ่มให้มีสีขาว, border-double และ border-radius */
+.v-btn {
+  border: double 3px white !important;
+  border-radius: 12px !important;
+  color: white !important;
+}
+
+/* สำหรับปุ่ม icon ให้ใช้ border-radius เป็นวงกลม */
+.v-btn--icon {
+  border-radius: 50% !important;
+}
 </style>

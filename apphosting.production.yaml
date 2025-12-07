@@ -1,0 +1,35 @@
+# Production Environment Configuration
+# สำหรับ Production deployment
+
+runtime: nodejs20
+
+build:
+  commands:
+    - npm ci --production=false
+    - npm run build
+  output: dist
+
+env:
+  - variable: NODE_ENV
+    value: production
+  
+  - variable: VITE_FIREBASE_PROJECT_ID
+    value: musicplay-d9231
+  
+  - variable: VITE_FIREBASE_STORAGE_BUCKET
+    value: musicplay-d9231.appspot.com
+
+resources:
+  cpu: 2
+  memory: 1Gi
+
+scaling:
+  minInstances: 1
+  maxInstances: 20
+
+healthCheck:
+  path: /
+  interval: 30s
+  timeout: 5s
+  failureThreshold: 3
+

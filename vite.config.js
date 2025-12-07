@@ -7,7 +7,7 @@ import vuetify from 'vite-plugin-vuetify'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/musicplayapp/',
+  base: '/',
   plugins: [
     vue(),
     vueDevTools(),
@@ -18,4 +18,19 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  build: {
+    // ป้องกันการใช้ eval ใน production build
+    target: 'esnext',
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        // ใช้ strict mode เพื่อหลีกเลี่ยง eval
+        strict: true,
+      }
+    }
+  },
+  // ปิด sourcemap ใน production เพื่อลดปัญหา CSP
+  esbuild: {
+    legalComments: 'none',
+  }
 })

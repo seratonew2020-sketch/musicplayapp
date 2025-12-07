@@ -2,6 +2,9 @@
 import { createApp } from 'vue';
 import App from './App.vue';
 
+// Initialize Firebase
+import './plugins/firebase';
+
 // Vuetify
 import 'vuetify/styles';
 import '@mdi/font/css/materialdesignicons.css'; // Import MDI Font CSS
@@ -13,7 +16,7 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi'; // Use Font-based MDI
 const myCustomTheme = {
   dark: true, // กำหนดเป็น Dark Mode ตามต้นฉบับ
   colors: {
-    background: '#1c1022', // background-dark
+    background: '#C51162', // pink-accent-4
     surface: '#2c1a32',    // สีพื้นผิวรอง
     primary: '#a413ec',    // สีม่วงเข้ม (primary)
     secondary: '#f7f6f8',

@@ -1,6 +1,6 @@
 // src/composables/useAudioPlayer.js
 import { ref, onUnmounted } from 'vue'
-import googleDriveApi from '../plugins/googleDriveApi'
+import { loadAudioFilesFromStorage } from '../plugins/firebaseStorage'
 
 export function useAudioPlayer() {
   const playlist = ref([])
@@ -14,58 +14,23 @@ export function useAudioPlayer() {
   let audioElement = null
   let updateInterval = null
 
-  // ฟังก์ชันแปลง Folder URL เป็น Folder ID
-  const extractFolderId = (folderUrlOrId) => {
-    if (!folderUrlOrId) return null
-    
-    // ถ้าเป็น URL เต็ม
-    const match = folderUrlOrId.match(/folders\/([a-zA-Z0-9_-]+)/)
-    if (match) return match[1]
-    
-    // ถ้าเป็น ID แล้ว
-    return folderUrlOrId
-  }
-
-  // โหลดรายการเพลงจาก Google Drive ผ่าน Axios
-  const loadPlaylist = async (folderUrlOrId) => {
+  // โหลดรายการเพลงจาก Firebase Storage โดยใช้ Firebase SDK โดยตรง
+  const loadPlaylist = async (folderPath) => {
     try {
-      const folderId = extractFolderId(folderUrlOrId)
-      
-      if (!folderId) {
-        throw new Error('Folder ID ไม่ถูกต้อง')
+      if (!folderPath) {
+        throw new Error('Folder path ไม่ถูกต้อง')
       }
 
-      console.log('📂 กำลังโหลดเพลงจาก Folder ID:', folderId)
-
-      // เรียก API ผ่าน Axios (API Key จะถูกเพิ่มโดย Interceptor)
-      const response = await googleDriveApi.get('/files', {
-        params: {
-          q: `'${folderId}' in parents and (mimeType contains 'audio/' or name contains '.mp3') and mimeType != 'application/vnd.google-apps.folder'`,
-          fields: 'files(id, name, mimeType, size)',
-          orderBy: 'name'
-        }
-      })
-
-      const files = response.data.files || []
+      // เรียกใช้ Firebase Storage SDK โดยตรง
+      const files = await loadAudioFilesFromStorage(folderPath)
       
       if (files.length === 0) {
-        alert('⚠️ ไม่พบไฟล์เสียงในโฟลเดอร์นี้')
+        playlist.value = []
         return
       }
 
-      // Filter out folders explicitly and map to playlist
       playlist.value = files
-        .filter(file => file.mimeType !== 'application/vnd.google-apps.folder')
-        .map(file => ({
-          id: file.id,
-          name: file.name,
-          mimeType: file.mimeType,
-          size: file.size,
-          // สร้าง URL สำหรับเล่นเพลง (ใช้ API Key จาก env)
-          url: `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media&key=${import.meta.env.VITE_GOOGLE_API_KEY?.trim()}`
-        }))
-
-      console.log('✅ โหลดเพลงสำเร็จ:', playlist.value.length, 'ไฟล์')
+      console.log('✅ โหลดเพลงสำเร็จด้วย Firebase SDK:', playlist.value.length, 'ไฟล์')
       
     } catch (error) {
       console.error('❌ โหลดรายการเพลงล้มเหลว:', error)

@@ -56,7 +56,9 @@
                 </template>
                 
                 <v-list-item-title class="font-weight-medium">{{ track.name }}</v-list-item-title>
-                <v-list-item-subtitle class="text-caption">Google Drive Audio</v-list-item-subtitle>
+                <v-list-item-subtitle class="text-caption">
+                  <div>{{ track.fullPath || 'Firebase Storage' }}</div>
+                </v-list-item-subtitle>
                 
                 <template v-slot:append>
                   <v-icon v-if="index === currentTrackIndex" color="primary" size="small">mdi-play-circle</v-icon>
@@ -106,7 +108,7 @@
           
           <v-col cols="12" class="text-center mt-4">
             <h1 class="text-h4 font-weight-bold">{{ currentTrack.name || 'Unknown Track' }}</h1>
-            <p class="text-subtitle-1 text-on-surface-variant mt-1">{{ currentTrack.artist || 'Google Drive' }}</p>
+            <p class="text-subtitle-1 text-on-surface-variant mt-1">{{ currentTrack.artist || 'Firebase Storage' }}</p>
           </v-col>
 
           <v-col cols="12" class="mt-4">
@@ -250,10 +252,11 @@ import { onMounted, computed, ref } from 'vue';
 import { useAudioPlayer } from './composables/useAudioPlayer'; 
 
 // **********************************************
-// 1. กำหนดค่า API และ Folder ID
+// 1. กำหนดค่า Firebase Storage Path
 // **********************************************
-// **สำคัญ: ต้องแทนที่ค่าเหล่านี้ด้วยคีย์จริงและ ID โฟลเดอร์จริงของคุณ**
-const GOOGLE_DRIVE_FOLDER_ID = '1jop3ta9AXsziyMJcMzJRXok0JwVERTBx';
+// **สำคัญ: ต้องแทนที่ค่าเหล่านี้ด้วย path ของโฟลเดอร์ใน Firebase Storage**
+// ตัวอย่าง: 'music/' หรือ 'audio/songs/' (ต้องมี / ท้าย path)
+const FIREBASE_STORAGE_PATH = 'users/BuxerwRsTqdw1H30u1BVLAj4mzM2/music/';
 
 const {
   playlist, 
@@ -276,16 +279,16 @@ const {
 // คำนวณเพลงที่กำลังเล่นปัจจุบันสำหรับ UI
 const currentTrack = computed(() => {
   if (playlist.value.length === 0 || currentTrackIndex.value === -1) {
-    return { name: 'กำลังโหลด...', artist: 'Connecting to Drive', albumArt: null };
+    return { name: 'กำลังโหลด...', artist: 'Connecting to Firebase', albumArt: null };
   }
   
   const track = playlist.value[currentTrackIndex.value];
   
-  // จำลองข้อมูลเพิ่มเติม Artist/Album Art (หากมีข้อมูลนี้ใน Drive API หรือ Metadata)
+  // จำลองข้อมูลเพิ่มเติม Artist/Album Art
   return { 
     name: track.name,
-    artist: 'Google Drive Audio', 
-    albumArt: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDDglhv36b23gCMNpx1extR-76cGF31OU53_CXZEWWNicTeqUrNr-OaEK6LXhPxqGtFLY8EHRR2qPHRPDTMjo_YBVckVdommdMZ001_X8FC2mgJQm0a60Z8EtHnKOUkXGlL-PzwirNzoe2qG3c1SDXwDD3Jrhfza_9l8nrzmCA8xGGQGCneUYuJeNAcveCU_6qaaUnsUEyNB4Eb69NHjhSur2OAdDis_t31upOz--qXVgCWso1y8XSt3yrD6OQCtkCEKwdZZB2LW3g' 
+    artist: 'Firebase Storage Audio', 
+    albumArt: 'https://placehold.co/500x500/1c1022/a413ec?text=Music' 
   };
 });
 
@@ -312,8 +315,8 @@ const toggleQueue = () => {
 };
 
 onMounted(async () => {
-  // โหลดรายการเพลงจาก Google Drive เมื่อ Component ถูก Mount
-  await loadPlaylist(GOOGLE_DRIVE_FOLDER_ID);
+  // โหลดรายการเพลงจาก Firebase Storage เมื่อ Component ถูก Mount
+  await loadPlaylist(FIREBASE_STORAGE_PATH);
   
   // หากโหลดสำเร็จ Dialog ปลดล็อกจะปรากฏขึ้นโดยอัตโนมัติ
 });
@@ -333,5 +336,17 @@ onMounted(async () => {
 
 .v-btn:focus {
   outline: none;
+}
+
+/* ปรับแต่งปุ่มให้มีสีขาว, border-double และ border-radius */
+.v-btn {
+  border: double 3px white !important;
+  border-radius: 12px !important;
+  color: white !important;
+}
+
+/* สำหรับปุ่ม icon ให้ใช้ border-radius เป็นวงกลม */
+.v-btn--icon {
+  border-radius: 50% !important;
 }
 </style>

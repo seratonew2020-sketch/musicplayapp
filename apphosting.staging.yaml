@@ -1,0 +1,35 @@
+# Staging Environment Configuration
+# สำหรับ Staging/Development deployment
+
+runtime: nodejs20
+
+build:
+  commands:
+    - npm ci
+    - npm run build
+  output: dist
+
+env:
+  - variable: NODE_ENV
+    value: staging
+  
+  - variable: VITE_FIREBASE_PROJECT_ID
+    value: musicplay-d9231
+  
+  - variable: VITE_FIREBASE_STORAGE_BUCKET
+    value: musicplay-d9231.appspot.com
+
+resources:
+  cpu: 1
+  memory: 512Mi
+
+scaling:
+  minInstances: 0
+  maxInstances: 5
+
+healthCheck:
+  path: /
+  interval: 30s
+  timeout: 5s
+  failureThreshold: 3
+
