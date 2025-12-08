@@ -5,7 +5,7 @@ import { ref, getDownloadURL } from 'firebase/storage'
 
 // สร้าง axios instance สำหรับ Music API
 const musicApi = axios.create({
-  timeout: 30000, // 30 seconds
+  timeout: 60000, // 60 seconds (เพิ่มขึ้นเพื่อรองรับไฟล์จำนวนมาก)
   headers: {
     'Content-Type': 'application/json',
   }
@@ -137,44 +137,98 @@ export const loadAudioFilesWithAxios = async (folderPath = 'music/') => {
 }
 
 /**
- * โหลดรายการเพลงจาก API endpoint (ถ้ามี backend API)
- * @param {string} apiUrl - URL ของ API endpoint
- * @param {string} folderPath - Path ของโฟลเดอร์
+ * โหลดรายการเพลงจาก API endpoint
+ * @param {string} apiBaseUrl - Base URL ของ API (default: http://localhost:3000)
+ * @param {string|Array} paths - Path(s) ของโฟลเดอร์ (optional, default: ทั้ง 2 โฟลเดอร์)
+ * @param {boolean} includeUrl - Include signed URLs (default: true)
  * @returns {Promise<Array>} Array ของไฟล์
  */
-export const loadAudioFilesFromAPI = async (apiUrl, folderPath) => {
+export const loadAudioFilesFromAPI = async (
+  apiBaseUrl = 'http://localhost:3000',
+  paths = null,
+  includeUrl = true
+) => {
   try {
-    console.log('📂 กำลังโหลดเพลงจาก API:', apiUrl)
-    
-    const response = await musicApi.get(apiUrl, {
-      params: {
-        path: folderPath
+    // ตั้งค่า base URL สำหรับ musicApi
+    const api = axios.create({
+      baseURL: apiBaseUrl,
+      timeout: 60000, // 60 seconds (เพิ่มขึ้นเพื่อรองรับไฟล์จำนวนมาก)
+      headers: {
+        'Content-Type': 'application/json',
       }
     })
+
+    let apiUrl = '/api/music'
+    const params = {
+      includeUrl: includeUrl.toString(),
+      expiresIn: '3600'
+    }
+
+    // ถ้ามี paths ระบุมา ให้ส่งเป็น query parameter
+    if (paths) {
+      if (Array.isArray(paths)) {
+        params.paths = paths.join(',')
+      } else {
+        params.paths = paths
+      }
+    }
+
+    console.log('📂 กำลังโหลดเพลงจาก API:', `${apiBaseUrl}${apiUrl}`)
+    console.log('📋 Parameters:', params)
     
-    if (response.data && Array.isArray(response.data)) {
-      console.log('✅ โหลดเพลงสำเร็จจาก API:', response.data.length, 'ไฟล์')
-      return response.data
+    const response = await api.get(apiUrl, { params })
+    
+    if (response.data && response.data.success && Array.isArray(response.data.files)) {
+      const files = response.data.files.map(file => ({
+        id: file.id || file.fullPath,
+        name: file.name,
+        mimeType: file.contentType || file.mimeType || 'audio/mpeg',
+        size: file.size || 0,
+        url: file.url || null,
+        fullPath: file.fullPath,
+        sourceFolder: file.sourceFolder,
+        sourceUser: file.sourceUser
+      }))
+      
+      console.log('✅ โหลดเพลงสำเร็จจาก API:', files.length, 'ไฟล์')
+      console.log('📊 Summary:', {
+        total: response.data.count,
+        paths: response.data.paths || [response.data.path]
+      })
+      
+      return files
     }
     
+    console.warn('⚠️ API response ไม่ถูกต้อง:', response.data)
     return []
   } catch (error) {
     console.error('❌ โหลดจาก API ล้มเหลว:', error)
     
     if (error.response) {
       const status = error.response.status
+      const errorData = error.response.data
+      
+      let errorMessage = '❌ เกิดข้อผิดพลาดในการโหลดเพลงจาก API'
+      
       switch (status) {
         case 404:
-          alert('❌ ไม่พบข้อมูล (404)')
+          errorMessage = '❌ ไม่พบข้อมูล (404)\n\nกรุณาตรวจสอบ path ใน Firebase Storage'
           break
         case 500:
-          alert('❌ Server Error (500)')
+          errorMessage = `❌ Server Error (500)\n\n${errorData?.message || errorData?.error || 'Internal server error'}`
+          break
+        case 400:
+          errorMessage = `❌ Bad Request (400)\n\n${errorData?.error || 'Invalid request parameters'}`
           break
         default:
-          alert(`❌ เกิดข้อผิดพลาด: ${error.response.data?.message || error.message}`)
+          errorMessage = `❌ เกิดข้อผิดพลาด (${status})\n\n${errorData?.message || errorData?.error || error.message}`
       }
+      
+      alert(errorMessage)
+    } else if (error.request) {
+      alert('❌ ไม่สามารถเชื่อมต่อกับ API Server\n\nกรุณาตรวจสอบว่า server ทำงานอยู่ที่ http://localhost:3000')
     } else {
-      alert('❌ ไม่สามารถเชื่อมต่อกับ API')
+      alert(`❌ เกิดข้อผิดพลาด: ${error.message}`)
     }
     
     return []

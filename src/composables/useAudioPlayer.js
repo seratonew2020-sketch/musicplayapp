@@ -14,29 +14,77 @@ export function useAudioPlayer() {
   let audioElement = null
   let updateInterval = null
 
-  // โหลดรายการเพลงจาก Firebase Storage โดยใช้ Firebase SDK โดยตรง
-  const loadPlaylist = async (folderPath) => {
+  // โหลดรายการเพลงจาก API (แนะนำ) หรือ Firebase Storage SDK (fallback)
+  // รองรับทั้ง single path และ array of paths
+  // เพิ่ม track จาก URL ตรง ๆ (เช่นลิงก์ดาวน์โหลดจาก Firebase Storage)
+  const addTrackByUrl = (url) => {
     try {
-      if (!folderPath) {
-        throw new Error('Folder path ไม่ถูกต้อง')
+      // ดึงชื่อไฟล์จาก URL
+      const decoded = decodeURIComponent(url.split('/o/')[1].split('?')[0])
+      const name = decoded.substring(decoded.lastIndexOf('/') + 1)
+      const track = {
+        name,
+        url,
+        sourceFolder: '',
+        sourceUser: 'external',
+        size: 0,
+        contentType: 'audio/mpeg'
       }
-
-      // เรียกใช้ Firebase Storage SDK โดยตรง
-      const files = await loadAudioFilesFromStorage(folderPath)
-      
-      if (files.length === 0) {
-        playlist.value = []
-        return
-      }
-
-      playlist.value = files
-      console.log('✅ โหลดเพลงสำเร็จด้วย Firebase SDK:', playlist.value.length, 'ไฟล์')
-      
-    } catch (error) {
-      console.error('❌ โหลดรายการเพลงล้มเหลว:', error)
-      playlist.value = []
+      playlist.value.push(track)
+      console.log('✅ เพิ่ม track จาก URL:', name)
+    } catch (e) {
+      console.error('❌ ไม่สามารถเพิ่ม track จาก URL ได้', e)
     }
   }
+
+  const loadPlaylist = async (folderPaths) => {
+    // Ensure folderPaths is an array
+    const paths = Array.isArray(folderPaths) ? folderPaths : [folderPaths];
+    if (paths.length === 0 || paths.some(p => !p)) {
+      throw new Error('Folder path ไม่ถูกต้อง');
+    }
+
+    console.log('🎵 เริ่มโหลด playlist จาก Firebase Storage SDK');
+    console.log('📂 โหลดจาก', paths.length, 'โฟลเดอร์:', paths);
+
+    const allFiles = [];
+    for (let i = 0; i < paths.length; i++) {
+      const path = paths[i];
+      console.log(`📂 โหลดจากโฟลเดอร์ ${i + 1}/${paths.length}: ${path}`);
+      try {
+        const files = await loadAudioFilesFromStorage(path);
+        const filesWithSource = files.map(file => ({
+          ...file,
+          sourceFolder: path,
+          sourceUser: path.split('/')[1] || 'unknown'
+        }));
+        allFiles.push(...filesWithSource);
+        console.log(`✅ โหลดจาก ${path}: ${files.length} ไฟล์`);
+      } catch (error) {
+        console.error(`❌ ไม่สามารถโหลดจาก ${path}:`, error);
+      }
+    }
+
+    if (allFiles.length === 0) {
+      console.warn('⚠️ ไม่พบไฟล์เสียงจากทุกโฟลเดอร์ - playlist จะว่างเปล่า');
+      playlist.value = [];
+      return;
+    }
+
+    // Sort and set playlist
+    playlist.value = allFiles.sort((a, b) => a.name.localeCompare(b.name));
+    console.log('✅ โหลดเพลงสำเร็จและเพิ่มเข้า Queue:', playlist.value.length, 'ไฟล์');
+    console.log('📋 รายการใน Queue:', playlist.value.map((f, i) => `${i + 1}. ${f.name} (${f.sourceUser})`));
+
+    // สรุปตามโฟลเดอร์
+    const filesByFolder = {}
+    playlist.value.forEach(file => {
+      const folder = file.sourceFolder
+      filesByFolder[folder] = (filesByFolder[folder] || 0) + 1
+    })
+    console.log('📊 สรุปตามโฟลเดอร์:', filesByFolder);
+  }
+
 
   // สร้าง Audio Element
   const createAudioElement = () => {
@@ -173,6 +221,7 @@ export function useAudioPlayer() {
     currentTime,
     duration,
     volume,
+    addTrackByUrl,
     loadPlaylist,
     togglePlay,
     loadTrack,
@@ -181,5 +230,5 @@ export function useAudioPlayer() {
     unlockAudio,
     seek,
     setVolume
-  }
+  };
 }

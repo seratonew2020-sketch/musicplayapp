@@ -32,5 +32,12 @@ export default defineConfig({
   // ปิด sourcemap ใน production เพื่อลดปัญหา CSP
   esbuild: {
     legalComments: 'none',
+  },
+  server: {
+    fs: {
+      // Allow serving files from node_modules directory (for MDI fonts)
+      // This allows access to parent directories where node_modules might be located
+      allow: ['.', '..']
+    }
   }
 })

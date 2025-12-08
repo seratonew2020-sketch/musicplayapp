@@ -2,34 +2,9 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // อนุญาตให้อ่านไฟล์ทั้งหมดใน users/{userId}/music/
-    match /users/{userId}/music/{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    // อนุญาตให้อ่านไฟล์ทั้งหมดใน users/{userId}/hiphop/
-    match /users/{userId}/hiphop/{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    // อนุญาตให้อ่านไฟล์ทั้งหมดใน music/ (สำหรับ backward compatibility)
-    match /music/{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    // อนุญาตให้อ่านไฟล์ทั้งหมดใน hiphop/ (สำหรับ backward compatibility)
-    match /hiphop/{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    // อนุญาตให้อ่านไฟล์ทั้งหมด (สำหรับการทดสอบ - สามารถจำกัดได้ในอนาคต)
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
+      allow read; // อนุญาตให้อ่านได้ทุกคน (Public)
+      allow write: if false; // ห้ามเขียนผ่าน Client (เพื่อความปลอดภัย)
     }
   }
 }

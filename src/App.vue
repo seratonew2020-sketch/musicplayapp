@@ -2,7 +2,45 @@
   <v-app>
     <v-main>
       <v-container class="pa-4 pt-0" style="min-height: 100vh;">
+
+
+        <!-- Storage Path Selector -->
+        <v-row class="mb-4" align="center">
+          <v-col cols="12" sm="8" md="6">
+            <v-text-field
+              v-model="trackUrl"
+              label="เพิ่มเพลงจาก URL Firebase Storage"
+              placeholder="https://firebasestorage.googleapis.com/v0/b/musicplay-d9231.firebasestorage.app/o/users%2FBuxerwRsTqdw1H30u1BVLAj4mzM2%2Fmusic%2F/..."
+              clearable
+              hide-details
+            ></v-text-field>
+          </v-col>
+          <v-col cols="12" sm="4" md="2">
+            <v-btn color="primary" @click="addTrackFromUrl" :disabled="!trackUrl">
+              เพิ่มเพลง
+            </v-btn>
+          </v-col>
+        </v-row>
         
+        <v-row class="mb-4" align="center">
+          <v-col cols="12" sm="8" md="6">
+            <v-select
+              v-model="selectedPaths"
+              :items="storagePathOptions"
+              label="เลือกโฟลเดอร์เพลง"
+              multiple
+              chips
+              clearable
+              hide-details
+            ></v-select>
+          </v-col>
+          <v-col cols="12" sm="4" md="6" class="d-flex justify-end">
+            <v-btn color="primary" variant="flat" @click="reloadPlaylist">
+              โหลด Playlist
+            </v-btn>
+          </v-col>
+        </v-row>
+
         <v-dialog 
           :model-value="!isUnlocked && playlist.length > 0" 
           :persistent="true" 
@@ -29,7 +67,10 @@
   <v-bottom-sheet v-model="showQueue" inset>
           <v-card class="rounded-t-xl" color="surface">
             <v-card-title class="d-flex align-center pa-4">
-              <span class="text-h6 font-weight-bold">Queue ({{ playlist.length }})</span>
+              <div>
+                <span class="text-h6 font-weight-bold">Queue</span>
+                <span class="text-caption text-medium-emphasis ml-2">({{ playlist.length }} เพลง)</span>
+              </div>
               <v-spacer></v-spacer>
               <v-btn icon variant="text" @click="showQueue = false">
                 <v-icon>mdi-close</v-icon>
@@ -38,30 +79,83 @@
             
             <v-divider></v-divider>
 
-            <v-list lines="one" class="bg-transparent" style="max-height: 60vh; overflow-y: auto;">
+            <!-- Empty State -->
+            <div v-if="playlist.length === 0" class="pa-8 text-center">
+              <v-icon size="64" color="primary" class="mb-4">mdi-music-off</v-icon>
+              <p class="text-body-1">ไม่มีเพลงใน Queue</p>
+              <p class="text-caption text-medium-emphasis">กำลังโหลดจาก Firebase Storage...</p>
+            </div>
+
+            <!-- Queue List -->
+            <v-list lines="two" class="bg-transparent" style="max-height: 60vh; overflow-y: auto;" v-else>
               <v-list-item
                 v-for="(track, index) in playlist"
-                :key="track.id"
+                :key="track.id || index"
                 :value="index"
                 :active="index === currentTrackIndex"
                 active-color="primary"
                 @click="loadTrack(index)"
                 class="rounded-lg ma-2"
+                :class="{ 'bg-primary-opacity': index === currentTrackIndex }"
               >
                 <template v-slot:prepend>
-                  <div class="d-flex align-center justify-center" style="width: 40px;">
-                    <v-icon v-if="index === currentTrackIndex" color="primary" class="animation-pulse">mdi-equalizer</v-icon>
-                    <span v-else class="text-caption text-medium-emphasis">{{ index + 1 }}</span>
+                  <div class="d-flex align-center justify-center" style="width: 50px;">
+                    <v-icon 
+                      v-if="index === currentTrackIndex && isPlaying" 
+                      color="primary" 
+                      size="large"
+                      class="animation-pulse"
+                    >
+                      mdi-equalizer
+                    </v-icon>
+                    <v-icon 
+                      v-else-if="index === currentTrackIndex" 
+                      color="primary" 
+                      size="large"
+                    >
+                      mdi-pause-circle
+                    </v-icon>
+                    <span v-else class="text-body-2 text-medium-emphasis font-weight-bold">
+                      {{ index + 1 }}
+                    </span>
                   </div>
                 </template>
                 
-                <v-list-item-title class="font-weight-medium">{{ track.name }}</v-list-item-title>
+                <v-list-item-title class="font-weight-medium text-wrap">
+                  {{ track.name || 'Unknown Track' }}
+                </v-list-item-title>
                 <v-list-item-subtitle class="text-caption">
-                  <div>{{ track.fullPath || 'Firebase Storage' }}</div>
+                  <div class="d-flex align-center mt-1">
+                    <v-icon size="small" class="mr-1">mdi-cloud</v-icon>
+                    <span>{{ track.sourceUser || 'Firebase Storage' }}</span>
+                    <v-chip 
+                      v-if="track.sourceUser" 
+                      size="x-small" 
+                      color="primary" 
+                      variant="text"
+                      class="ml-2"
+                    >
+                      {{ track.sourceUser.substring(0, 8) }}...
+                    </v-chip>
+                  </div>
+                  <div class="d-flex align-center justify-space-between mt-1">
+                    <span v-if="track.size" class="text-caption text-medium-emphasis">
+                      {{ formatFileSize(track.size) }}
+                    </span>
+                    <span v-if="track.sourceFolder" class="text-caption text-medium-emphasis">
+                      {{ track.sourceFolder.split('/').slice(-2, -1)[0] }}
+                    </span>
+                  </div>
                 </v-list-item-subtitle>
                 
                 <template v-slot:append>
-                  <v-icon v-if="index === currentTrackIndex" color="primary" size="small">mdi-play-circle</v-icon>
+                  <v-icon 
+                    v-if="index === currentTrackIndex" 
+                    color="primary" 
+                    size="small"
+                  >
+                    {{ isPlaying ? 'mdi-pause-circle' : 'mdi-play-circle' }}
+                  </v-icon>
                 </template>
               </v-list-item>
             </v-list>
@@ -249,22 +343,67 @@
 
 <script setup>
 import { onMounted, computed, ref } from 'vue';
-import { useAudioPlayer } from './composables/useAudioPlayer'; 
+import { useAudioPlayer } from './composables/useAudioPlayer';
+import { verifyStorageConnection } from './plugins/firebaseStorage'; 
 
 // **********************************************
-// 1. กำหนดค่า Firebase Storage Path
+// 1. กำหนดค่า Firebase Storage Paths
 // **********************************************
-// **สำคัญ: ต้องแทนที่ค่าเหล่านี้ด้วย path ของโฟลเดอร์ใน Firebase Storage**
-// ตัวอย่าง: 'music/' หรือ 'audio/songs/' (ต้องมี / ท้าย path)
-const FIREBASE_STORAGE_PATH = 'users/BuxerwRsTqdw1H30u1BVLAj4mzM2/music/';
+// **สามารถกำหนดหลายโฟลเดอร์ได้ - ไฟล์จะถูกรวมเข้า Queue**
+// **สามารถกำหนดหลายโฟลเดอร์ได้ - ไฟล์จะถูกรวมเข้า Queue**
+// **สามารถกำหนดหลายโฟลเดอร์ได้ - ไฟล์จะถูกรวมเข้า Queue**
+const FIREBASE_STORAGE_PATHS = [
+  'users/BuxerwRsTqdw1H30u1BVLAj4mzM2/music/',
+  'users/eGiEPTHkK1WAgzAuWtp2EgKdRIa2/music/'
+];
+
+// ตัวเลือก Path สำหรับ Select
+const storagePathOptions = [
+  { title: 'User 1 (Buxer...)', value: 'users/BuxerwRsTqdw1H30u1BVLAj4mzM2/music/' },
+  { title: 'User 2 (eGiEP...)', value: 'users/eGiEPTHkK1WAgzAuWtp2EgKdRIa2/music/' }
+];
+
+const selectedPaths = ref([...FIREBASE_STORAGE_PATHS]); // Default เลือกทั้งหมด
+
+// Function โหลด Playlist ตาม path ที่เลือก
+const reloadPlaylist = async () => {
+  if (selectedPaths.value.length === 0) {
+    alert('กรุณาเลือกอย่างน้อย 1 โฟลเดอร์');
+    return;
+  }
+  
+  // Pause playback if playing
+  const audio = document.querySelector('audio');
+  if (audio) audio.pause();
+  
+  await loadPlaylist(selectedPaths.value);
+};
+
+const trackUrl = ref('')
+
+// ฟังก์ชันเพิ่มเพลงจาก URL Firebase Storage
+const addTrackFromUrl = () => {
+  if (!trackUrl.value) return
+  const url = trackUrl.value.trim()
+  const pattern = /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/musicplay-d9231\.firebasestorage\.app\/o\//
+  if (!pattern.test(url)) {
+    // ใช้ alert แทน snackbar ชั่วคราว (หรือจะเปลี่ยนเป็น console warning ก็ได้)
+    alert('URL ไม่ตรงกับรูปแบบ Firebase Storage ของโปรเจค')
+    return
+  }
+  // ใช้ composable เพื่อเพิ่ม track
+  addTrackByUrl(url)
+  // เคลียร์ input
+  trackUrl.value = ''
+}
 
 const {
-  playlist, 
-  currentTrackIndex, 
-  isPlaying, 
+  playlist,
+  currentTrackIndex,
+  isPlaying,
   isUnlocked,
-  currentTime, 
-  duration, 
+  currentTime,
+  duration,
   volume,
   loadPlaylist,
   togglePlay,
@@ -273,7 +412,8 @@ const {
   playPrevTrack,
   unlockAudio,
   seek,
-  setVolume
+  setVolume,
+  addTrackByUrl
 } = useAudioPlayer();
 
 // คำนวณเพลงที่กำลังเล่นปัจจุบันสำหรับ UI
@@ -300,6 +440,15 @@ const formatTime = (seconds) => {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 };
 
+// Helper: แปลงขนาดไฟล์เป็นรูปแบบที่อ่านง่าย
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
+
 // จัดการการปลดล็อกและการเริ่มเล่นครั้งแรก
 const handleUnlockAndStart = () => {
   unlockAudio();
@@ -315,10 +464,24 @@ const toggleQueue = () => {
 };
 
 onMounted(async () => {
-  // โหลดรายการเพลงจาก Firebase Storage เมื่อ Component ถูก Mount
-  await loadPlaylist(FIREBASE_STORAGE_PATH);
-  
-  // หากโหลดสำเร็จ Dialog ปลดล็อกจะปรากฏขึ้นโดยอัตโนมัติ
+  console.log('🎵 เริ่มโหลด playlist จาก', FIREBASE_STORAGE_PATHS.length, 'โฟลเดอร์:', FIREBASE_STORAGE_PATHS);
+  try {
+    // โหลด playlist โดยใช้ Firebase Storage SDK โดยตรง
+    await loadPlaylist(FIREBASE_STORAGE_PATHS);
+
+    // หากโหลดสำเร็จ Dialog ปลดล็อกจะปรากฏขึ้นโดยอัตโนมัติ
+    if (playlist.value.length > 0) {
+      console.log('✅ โหลด playlist สำเร็จ - มี', playlist.value.length, 'ไฟล์ใน Queue');
+    } else {
+      console.warn('⚠️ ไม่พบเพลงใน Queue');
+      console.warn('💡 ตรวจสอบว่า:');
+      console.warn('   1. Firebase Storage มีไฟล์ในโฟลเดอร์ที่กำหนด');
+      console.warn('   2. ตรวจสอบ Security Rules ของ Firebase Storage');
+    }
+  } catch (error) {
+    console.error('❌ โหลด playlist ล้มเหลว:', error);
+    alert('❌ ไม่สามารถโหลดเพลงได้\n\nกรุณาตรวจสอบ:\n1. Firebase configuration\n2. Network connection');
+  }
 });
 </script>
 
@@ -348,5 +511,26 @@ onMounted(async () => {
 /* สำหรับปุ่ม icon ให้ใช้ border-radius เป็นวงกลม */
 .v-btn--icon {
   border-radius: 50% !important;
+}
+
+/* Queue item active state */
+.bg-primary-opacity {
+  background-color: rgba(164, 19, 236, 0.1) !important;
+}
+
+/* Animation for equalizer */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+.animation-pulse {
+  animation: pulse 1s ease-in-out infinite;
 }
 </style>

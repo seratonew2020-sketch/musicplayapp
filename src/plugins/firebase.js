@@ -5,11 +5,14 @@ import { getStorage } from 'firebase/storage'
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID
 
 // สร้าง storageBucket อัตโนมัติจาก projectId ถ้าไม่ได้ตั้งค่าใน env
+// ใช้ firebasestorage.app domain (ใหม่) หรือ appspot.com (เก่า)
 const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 
-  (projectId ? `${projectId}.appspot.com` : undefined)
+  (projectId ? `${projectId}.firebasestorage.app` : undefined)
 
 if (!storageBucket) {
   console.error('❌ Firebase Storage Bucket ไม่ได้ถูกตั้งค่า และไม่สามารถสร้างจาก projectId ได้')
+} else {
+  console.log('✅ Firebase Storage Bucket:', storageBucket)
 }
 
 const firebaseConfig = {
